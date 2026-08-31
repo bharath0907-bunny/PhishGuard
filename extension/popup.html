@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <div class="logo">🛡️ PhishGuard</div>
+    <span id="badge" class="badge">ANALYZING</span>
+  </div>
+  <div class="content">
+    <div class="url-box" id="current-url">Fetching active tab...</div>
+    <div class="score-card" id="score-card">
+      <div class="score-val" id="score-val">--%</div>
+      <div class="score-label" id="score-label">Risk Score</div>
+    </div>
+    <div class="reasons-list" id="reasons-list"></div>
+  </div>
+  <div class="footer">
+    <button id="rescan-btn" class="btn">Deep Rescan</button>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
