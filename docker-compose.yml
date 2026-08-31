@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # PhishGuard FastAPI AI & Risk Engine
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: phishguard-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - DATABASE_URL=sqlite:///./phishguard.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # PhishGuard React Web Dashboard
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: phishguard-frontend
+    restart: always
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
