@@ -1,4 +1,7 @@
 import re
+import os
+import json
+import math
 from typing import Dict, Any, List, Tuple
 from .threat_bank import URGENCY_PATTERNS, TARGETED_BRANDS
 from .url_features import extract_url_features
@@ -49,6 +52,51 @@ CONVERSATIONAL_PATTERNS = [
     r"\b(are\s+we\s+still\s+meeting|how\s+are\s+you|see\s+you\s+(tomorrow|later|tonight)|dinner|lunch|breakfast|call\s+me|happy\s+birthday)\b"
 ]
 
+# Load ML Weights
+_MODEL_WEIGHTS = {}
+_MODEL_INTERCEPT = -0.85
+
+def _load_weights():
+    global _MODEL_WEIGHTS, _MODEL_INTERCEPT
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    weights_path = os.path.join(current_dir, "model_weights.json")
+    if os.path.exists(weights_path):
+        try:
+            with open(weights_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                _MODEL_WEIGHTS = data.get("weights", {})
+                _MODEL_INTERCEPT = data.get("intercept", -0.85)
+        except Exception:
+            pass
+
+_load_weights()
+
+def sigmoid(z: float) -> float:
+    """Logistic sigmoid function."""
+    if z < -20.0:
+        return 0.0
+    if z > 20.0:
+        return 1.0
+    return 1.0 / (1.0 + math.exp(-z))
+
+def predict_ml_probability(text: str) -> Tuple[float, List[Dict[str, Any]]]:
+    """
+    On-device / fast vector inference calculating smishing probability and top token impacts.
+    """
+    tokens = re.findall(r"\b[a-zA-Z0-9]+\b|https?://[^\s]+", text.lower())
+    z = _MODEL_INTERCEPT
+    token_impacts = []
+
+    for t in tokens:
+        if t in _MODEL_WEIGHTS:
+            weight = _MODEL_WEIGHTS[t]
+            z += weight
+            token_impacts.append({"token": t, "weight": weight})
+
+    prob = sigmoid(z)
+    token_impacts.sort(key=lambda x: abs(x["weight"]), reverse=True)
+    return prob, token_impacts[:5]
+
 def extract_urls_from_text(text: str) -> List[str]:
     """Extracts and normalizes all embedded URLs from text."""
     matches = URL_REGEX.findall(text)
@@ -63,7 +111,7 @@ def extract_urls_from_text(text: str) -> List[str]:
 def analyze_smishing_message(sender: str, raw_text: str) -> Dict[str, Any]:
     """
     Comprehensive, explainable real-time analysis of SMS/Google Messages text.
-    Computes calibrated risk score, identified threat categories, and actionable rationale.
+    Combines rule-based heuristics with Statistical ML probability into a calibrated risk score.
     """
     text_lower = raw_text.lower().strip()
     extracted_urls = extract_urls_from_text(raw_text)
@@ -73,7 +121,19 @@ def analyze_smishing_message(sender: str, raw_text: str) -> Dict[str, Any]:
     feature_contributions = []
     base_score = 0.0
     
-    # 1. Evaluate Embedded Links
+    # 1. Statistical ML Vector Inference
+    ml_prob, top_tokens = predict_ml_probability(raw_text)
+    ml_score = ml_prob * 100.0
+
+    if top_tokens:
+        for item in top_tokens:
+            impact = item["weight"] * 8.0
+            feature_contributions.append({
+                "feature": f"NLP Token: '{item['token']}'",
+                "impact": round(impact, 1)
+            })
+    
+    # 2. Evaluate Embedded Links
     url_results = []
     highest_url_risk = 0.0
     has_malicious_or_unknown_url = False
@@ -122,7 +182,7 @@ def analyze_smishing_message(sender: str, raw_text: str) -> Dict[str, Any]:
         
         base_score += highest_url_risk * 0.50
 
-    # 2. Urgency and Panic Induction Detection
+    # 3. Urgency and Panic Induction Detection
     urgency_matches = sum(1 for pattern in URGENCY_PATTERNS if re.search(pattern, text_lower))
     if urgency_matches > 0:
         boost = min(urgency_matches * 18.0, 45.0)
@@ -131,7 +191,7 @@ def analyze_smishing_message(sender: str, raw_text: str) -> Dict[str, Any]:
         threat_categories.append("Psychological Coercion / Urgency")
         feature_contributions.append({"feature": "Coercive / Panic Phrasing", "impact": boost})
 
-    # 3. Signature Rule Evaluation
+    # 4. Signature Rule Evaluation
     for category_name, rule_pair in CATEGORY_RULES.items():
         if all(re.search(p, text_lower) for p in rule_pair):
             threat_categories.append(category_name)
@@ -139,7 +199,7 @@ def analyze_smishing_message(sender: str, raw_text: str) -> Dict[str, Any]:
             reasons.append(f"Matches established threat signature: '{category_name}'")
             feature_contributions.append({"feature": f"Signature: {category_name}", "impact": 25.0})
 
-    # 4. Brand Impersonation in Text
+    # 5. Brand Impersonation in Text
     for brand, info in TARGETED_BRANDS.items():
         if any(k in text_lower for k in info["keywords"]):
             threat_categories.append(f"Brand Impersonation ({brand.upper()})")
@@ -149,14 +209,14 @@ def analyze_smishing_message(sender: str, raw_text: str) -> Dict[str, Any]:
                 feature_contributions.append({"feature": f"Impersonation: {brand.upper()}", "impact": 35.0})
             break
 
-    # 5. Sender Origin Analysis
+    # 6. Sender Origin Analysis
     sender_clean = sender.strip()
     if sender_clean.startswith("+") and not (sender_clean.startswith("+1") or sender_clean.startswith("+44") or sender_clean.startswith("+91") or sender_clean.startswith("+61")):
         base_score += 15.0
         reasons.append(f"High-risk international sender origin: {sender_clean}")
         feature_contributions.append({"feature": "Foreign Sender Origin", "impact": 15.0})
 
-    # 6. Benign Mitigation (Legitimate OTP or Personal Conversation)
+    # 7. Benign Mitigation (Legitimate OTP or Personal Conversation)
     is_safe_2fa = False
     if not extracted_urls and any(re.search(p, text_lower) for p in SAFE_TRANSACTION_PATTERNS):
         is_safe_2fa = True
@@ -169,8 +229,13 @@ def analyze_smishing_message(sender: str, raw_text: str) -> Dict[str, Any]:
         reasons.append("Conversational pattern consistent with standard interpersonal messaging")
         feature_contributions.append({"feature": "Interpersonal Conversation", "impact": -40.0})
 
-    # Normalize final score
-    final_score = min(max(base_score, 0.0), 100.0)
+    # 8. Hybrid Ensemble Fusion: 55% Lexical Heuristics + 45% Statistical ML Score
+    if is_safe_2fa:
+        hybrid_score = min(base_score, 15.0)
+    else:
+        hybrid_score = (0.55 * base_score) + (0.45 * ml_score)
+
+    final_score = min(max(hybrid_score, 0.0), 100.0)
     
     # Classification Thresholds
     if final_score >= 75.0:
@@ -189,14 +254,15 @@ def analyze_smishing_message(sender: str, raw_text: str) -> Dict[str, Any]:
         risk_level = "SAFE"
         prediction = "BENIGN"
 
-    # Dynamic Confidence Calculation
-    confidence = round(0.86 + (final_score / 800.0) if final_score > 50 else 0.94 - (final_score / 500.0), 3)
+    # Confidence Calculation
+    confidence = round(0.88 + (final_score / 800.0) if final_score > 50 else 0.95 - (final_score / 500.0), 3)
     confidence = min(max(confidence, 0.85), 0.99)
 
     return {
         "sender": sender,
         "raw_text": raw_text,
         "risk_score": round(final_score, 1),
+        "ml_probability": round(ml_prob, 3),
         "risk_level": risk_level,
         "prediction": prediction,
         "confidence": confidence,

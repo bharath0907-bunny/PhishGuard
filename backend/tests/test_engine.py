@@ -1,12 +1,20 @@
 import pytest
 try:
     from backend.app.ml.url_features import extract_url_features
-    from backend.app.ml.smishing_classifier import analyze_smishing_message, extract_urls_from_text
+    from backend.app.ml.smishing_classifier import (
+        analyze_smishing_message,
+        extract_urls_from_text,
+        predict_ml_probability
+    )
     from backend.app.ml.email_analyzer import analyze_email_content
     from backend.app.services.risk_engine import risk_engine
 except ImportError:
     from app.ml.url_features import extract_url_features
-    from app.ml.smishing_classifier import analyze_smishing_message, extract_urls_from_text
+    from app.ml.smishing_classifier import (
+        analyze_smishing_message,
+        extract_urls_from_text,
+        predict_ml_probability
+    )
     from app.ml.email_analyzer import analyze_email_content
     from app.services.risk_engine import risk_engine
 
@@ -16,6 +24,19 @@ def test_extract_urls_from_text():
     urls = extract_urls_from_text(sample)
     assert len(urls) == 1
     assert "chase-security.xyz" in urls[0]
+
+def test_ml_vector_inference_smishing():
+    text = "URGENT: [CHASE] Unauthorized wire detected. Verify immediately at http://chase-auth.xyz"
+    prob, top_tokens = predict_ml_probability(text)
+    assert prob >= 0.70
+    assert len(top_tokens) > 0
+    token_names = [t["token"] for t in top_tokens]
+    assert any(tok in token_names for tok in ["chase", "unauthorized", "urgent", "verify", "xyz"])
+
+def test_ml_vector_inference_benign():
+    text = "Hey, are we still meeting for lunch today? Let me know!"
+    prob, top_tokens = predict_ml_probability(text)
+    assert prob <= 0.20
 
 def test_smishing_classifier_chase_scam():
     sender = "+1 (800) 555-0199"
@@ -27,6 +48,7 @@ def test_smishing_classifier_chase_scam():
     assert result["prediction"] == "SMISHING"
     assert "Psychological Coercion / Urgency" in result["threat_categories"]
     assert len(result["extracted_urls"]) == 1
+    assert result["ml_probability"] >= 0.70
 
 def test_smishing_classifier_safe_otp():
     sender = "Google"
