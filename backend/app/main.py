@@ -9,6 +9,7 @@ from .api.mobile import mobile_router
 from .api.analyze import analyze_router
 from .api.dashboard import dashboard_router
 from .api.feedback import feedback_router
+from .api.research import research_router
 from .api.websocket import ws_router
 from .services.risk_engine import risk_engine
 
@@ -35,6 +36,7 @@ app.include_router(mobile_router, prefix=settings.API_V1_STR)
 app.include_router(analyze_router, prefix=settings.API_V1_STR)
 app.include_router(dashboard_router, prefix=settings.API_V1_STR)
 app.include_router(feedback_router, prefix=settings.API_V1_STR)
+app.include_router(research_router, prefix=settings.API_V1_STR)
 app.include_router(ws_router)
 
 @app.on_event("startup")

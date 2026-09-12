@@ -1,4 +1,14 @@
-import { DashboardStats, GoogleMessageEvent, UrlScanResult, EmailScanResult } from '../types';
+import { 
+  DashboardStats, 
+  GoogleMessageEvent, 
+  UrlScanResult, 
+  EmailScanResult,
+  ResearchBenchmarkResponse,
+  BatchEvaluateResponse,
+  BatchItem,
+  AdversarialTestResponse,
+  LatexExportResponse
+} from '../types';
 
 const API_BASE = 'http://localhost:8000/api/v1';
 
@@ -12,7 +22,6 @@ export async function fetchLiveFeed(limit: number = 30): Promise<GoogleMessageEv
   const res = await fetch(`${API_BASE}/dashboard/live-feed?limit=${limit}`);
   if (!res.ok) throw new Error('Failed to fetch live feed');
   const data = await res.json();
-  // Map API output to GoogleMessageEvent
   return data.map((item: any) => ({
     id: item.id,
     sender: item.title?.replace('Google Message from ', '') || 'SMS Sender',
@@ -75,5 +84,54 @@ export async function submitFeedback(targetId: string, verdict: string, comment?
       comment
     })
   });
+  return res.json();
+}
+
+// --- Research & Publication Suite APIs ---
+
+export async function fetchBenchmarks(): Promise<ResearchBenchmarkResponse> {
+  const res = await fetch(`${API_BASE}/research/benchmarks`);
+  if (!res.ok) throw new Error('Failed to fetch benchmark data');
+  return res.json();
+}
+
+export async function runBatchEvaluation(datasetName: string, items: BatchItem[]): Promise<BatchEvaluateResponse> {
+  const res = await fetch(`${API_BASE}/research/batch-evaluate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      dataset_name: datasetName,
+      items
+    })
+  });
+  if (!res.ok) throw new Error('Batch evaluation failed');
+  return res.json();
+}
+
+export async function runAdversarialTest(text: string, mutationType: string = 'ALL'): Promise<AdversarialTestResponse> {
+  const res = await fetch(`${API_BASE}/research/adversarial-test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text,
+      mutation_type: mutationType
+    })
+  });
+  if (!res.ok) throw new Error('Adversarial test failed');
+  return res.json();
+}
+
+export async function fetchLatexExports(): Promise<LatexExportResponse> {
+  const res = await fetch(`${API_BASE}/research/export/latex`);
+  if (!res.ok) throw new Error('Failed to fetch LaTeX exports');
+  return res.json();
+}
+
+export async function triggerLiveStreamEvent(): Promise<any> {
+  const res = await fetch(`${API_BASE}/research/simulate-stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (!res.ok) throw new Error('Failed to trigger simulation stream');
   return res.json();
 }

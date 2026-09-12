@@ -57,11 +57,14 @@ While traditional defenses only inspect desktop web traffic or inbox emails, Phi
 - **Legitimate 2FA Mitigation**: Suppresses false positives for genuine OTP codes (e.g., Google, Bank 2FA) and personal interpersonal messaging.
 - **Explainable AI (XAI)**: Generates human-readable rationales detailing exact risk factors and percentage contributions.
 
-### 3. 💻 Web Threat Operations Dashboard
-- Built with **React 18 + TypeScript + Vite + Custom Glassmorphism Dark Theme**.
-- **Live Threat Stream (`/ws/threat-stream`)**: WebSocket-powered live feed of all mobile and browser events.
-- **Attack Simulator Studio**: 1-click test suite to dispatch customizable attack vectors and view instant AI feature breakdowns.
-- **Deep Scanners**: Interactive URL and Email scanners with feature gauges, risk meters, and analyst feedback loops.
+### 3. 💻 Web Threat Operations & Research Dashboard
+- Built with **React 18 + TypeScript + Vite + Custom Cyber Glassmorphism Theme**.
+- **Live Threat Stream & Radar (`/ws/threat-stream`)**: WebSocket-powered real-time feed of mobile and browser events with audio threat alerts and visual radar sweeps.
+- **🔬 Academic Research & Benchmark Suite**: Interactive dynamic Confusion Matrix with decision threshold tuning slider, empirical ablation study, and sub-5ms latency profiling across 27,674 benchmark samples (UCI SMS Spam, PhishTank, Enron/Nazario, Adversarial Smishing).
+- **⚡ Adversarial Attack & Evasion Lab**: 1-Click attack vector injection and adversarial perturbation testing (Homoglyph replacement, Zero-width space injection, Levenshtein typosquatting, URL shortener disguise).
+- **🧪 Batch Dataset Evaluator**: Interactive CSV upload and batch inference testbed with real-time Precision/Recall/F1 calculation.
+- **📄 Paper & LaTeX Publication Hub**: 1-Click ready-to-use LaTeX tables for IEEE/ACM/Springer conferences, BibTeX citation generation, and downloadable telemetry CSV/JSON datasets.
+- **🔌 Multi-Tier API Gateway**: Interactive code generator (cURL, Python, JS) and telemetry status for Android and Chrome clients.
 
 ### 4. 🌐 Chrome Browser Extension (Manifest V3)
 - Background service worker monitoring active tab navigation.
