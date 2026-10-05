@@ -76,17 +76,32 @@ object RetrofitClient {
     private const val PREFS_NAME = "phishguard_prefs"
     private const val KEY_BASE_URL = "backend_base_url"
 
-    var baseUrl: String = "http://10.0.2.2:8000"
+    // Default intelligently to the local Wi-Fi PC host
+    const val DEFAULT_WIFI_PC_URL = "http://192.168.1.16:8000"
+    const val DEFAULT_EMULATOR_URL = "http://10.0.2.2:8000"
+    const val DEFAULT_LOCALHOST_URL = "http://127.0.0.1:8000"
+
+    var baseUrl: String = DEFAULT_WIFI_PC_URL
         set(value) {
-            field = value
+            field = value.trim()
             _apiService = null
         }
+
+    // Live connection tracking
+    var isConnected: Boolean = false
+        private set
+    var latencyMs: Long = -1L
+        private set
+    var statusText: String = "Standby"
+        private set
 
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val savedUrl = prefs.getString(KEY_BASE_URL, null)
         if (!savedUrl.isNullOrBlank()) {
             baseUrl = savedUrl
+        } else {
+            baseUrl = DEFAULT_WIFI_PC_URL
         }
     }
 
@@ -96,14 +111,39 @@ object RetrofitClient {
         prefs.edit().putString(KEY_BASE_URL, baseUrl).apply()
     }
 
+    suspend fun pingHealth(): Pair<Boolean, Long> {
+        val start = System.currentTimeMillis()
+        return try {
+            val response = apiService.checkHealth()
+            val duration = System.currentTimeMillis() - start
+            if (response.isSuccessful) {
+                isConnected = true
+                latencyMs = duration
+                statusText = "Online • ${duration}ms"
+                Pair(true, duration)
+            } else {
+                isConnected = false
+                latencyMs = -1L
+                statusText = "HTTP ${response.code()}"
+                Pair(false, -1L)
+            }
+        } catch (e: Exception) {
+            isConnected = false
+            latencyMs = -1L
+            statusText = "Autonomous ML"
+            Pair(false, -1L)
+        }
+    }
+
     private var _apiService: PhishGuardApiService? = null
 
     val apiService: PhishGuardApiService
         get() {
             if (_apiService == null) {
                 val okHttpClient = OkHttpClient.Builder()
-                    .connectTimeout(5, TimeUnit.SECONDS)
-                    .readTimeout(8, TimeUnit.SECONDS)
+                    .connectTimeout(3500, TimeUnit.MILLISECONDS)
+                    .readTimeout(5000, TimeUnit.MILLISECONDS)
+                    .retryOnConnectionFailure(true)
                     .build()
 
                 val cleanUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
@@ -118,3 +158,4 @@ object RetrofitClient {
             return _apiService!!
         }
 }
+

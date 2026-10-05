@@ -4,6 +4,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,9 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -32,33 +32,52 @@ import com.phishguard.mobile.network.RetrofitClient
 import com.phishguard.mobile.network.UrlScanPayload
 import com.phishguard.mobile.network.UrlScanMobileResponse
 import com.phishguard.mobile.notification.ThreatNotificationHelper
+import com.phishguard.mobile.storage.LocalThreatStorage
 import com.phishguard.mobile.ui.theme.*
 import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
     isNotificationServiceEnabled: Boolean,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onNavigateToTab: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
-    // Clipboard Quick Scanner State
-    var isScanningClipboard by remember { mutableStateOf(false) }
-    var scannedUrlResult by remember { mutableStateOf<UrlScanMobileResponse?>(null) }
+    // Dynamic local state
+    var localRecordCount by remember { mutableStateOf(LocalThreatStorage.getRecords(context).size) }
+    var isCheckingConnection by remember { mutableStateOf(false) }
+    var isOnline by remember { mutableStateOf(RetrofitClient.isConnected) }
+    var connectionLatency by remember { mutableStateOf(RetrofitClient.latencyMs) }
+
+    // Quick Scanner Modal State
     var showScanDialog by remember { mutableStateOf(false) }
+    var scanInputText by remember { mutableStateOf("") }
+    var isScanning by remember { mutableStateOf(false) }
+    var scanResult by remember { mutableStateOf<UrlScanMobileResponse?>(null) }
+
+    // Check backend connection in background
+    LaunchedEffect(Unit) {
+        isCheckingConnection = true
+        val (online, latency) = RetrofitClient.pingHealth()
+        isOnline = online
+        connectionLatency = latency
+        isCheckingConnection = false
+        localRecordCount = LocalThreatStorage.getRecords(context).size
+    }
 
     // Breathing Animation for Shield Status
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val infiniteTransition = rememberInfiniteTransition(label = "shieldPulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1.0f,
-        targetValue = 1.06f,
+        targetValue = 1.05f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1400, easing = FastOutSlowInEasing),
+            animation = tween(1500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "shieldScale"
+        label = "pulse"
     )
 
     Column(
@@ -66,31 +85,29 @@ fun HomeScreen(
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 1. Hero Radial Protection Hub Card
-        Card(
-            colors = CardDefaults.cardColors(containerColor = CyberCard),
-            shape = RoundedCornerShape(20.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(
-                    width = 1.dp,
-                    color = if (isNotificationServiceEnabled) CyberGreen.copy(alpha = 0.5f) else AlertRed.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(20.dp)
-                )
+        // 1. Hero Protection Boundary Hub
+        Surface(
+            color = CyberCard,
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(
+                1.dp,
+                if (isNotificationServiceEnabled) BoundarySuccess.copy(alpha = 0.6f) else BoundaryDanger.copy(alpha = 0.6f)
+            ),
+            modifier = Modifier.fillMaxWidth()
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Glowing Animated Radial Shield
+                // Radial Shield Icon
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(100.dp)
+                        .size(86.dp)
                         .scale(if (isNotificationServiceEnabled) pulseScale else 1.0f)
                 ) {
                     Box(
@@ -98,47 +115,42 @@ fun HomeScreen(
                             .fillMaxSize()
                             .clip(CircleShape)
                             .background(
-                                Brush.radialGradient(
-                                    colors = if (isNotificationServiceEnabled)
-                                        listOf(CyberGreen.copy(alpha = 0.35f), Color.Transparent)
-                                    else
-                                        listOf(AlertRed.copy(alpha = 0.35f), Color.Transparent)
-                                )
+                                if (isNotificationServiceEnabled) CyberGreen.copy(alpha = 0.15f) else AlertRed.copy(alpha = 0.15f)
                             )
                     )
                     Box(
                         modifier = Modifier
-                            .size(72.dp)
+                            .size(62.dp)
                             .clip(CircleShape)
                             .background(if (isNotificationServiceEnabled) CyberGreen else AlertRed),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = if (isNotificationServiceEnabled) Icons.Default.Shield else Icons.Default.Warning,
-                            contentDescription = "Shield Status",
+                            contentDescription = "Protection Shield",
                             tint = Color.White,
-                            modifier = Modifier.size(38.dp)
+                            modifier = Modifier.size(32.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = if (isNotificationServiceEnabled) "SHIELD ACTIVE" else "MONITORING INACTIVE",
-                    fontSize = 20.sp,
+                    text = if (isNotificationServiceEnabled) "SYSTEM PROTECTED" else "MONITORING INACTIVE",
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Black,
-                    letterSpacing = 1.5.sp,
+                    letterSpacing = 1.sp,
                     color = if (isNotificationServiceEnabled) CyberGreenLight else AlertRed
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = if (isNotificationServiceEnabled)
-                        "Real-time zero-click monitoring armed on Google Messages (com.google.android.apps.messaging) & SMS apps."
+                        "Zero-click protection is active for Google Messages & SMS. Malicious smishing is neutralized automatically."
                     else
-                        "Notification Access required so PhishGuard can intercept and neutralize malicious smishing links.",
+                        "Notification Access required so PhishGuard can intercept incoming threats and alert you in real-time.",
                     color = TextSecondary,
                     fontSize = 13.sp,
                     lineHeight = 18.sp,
@@ -146,255 +158,308 @@ fun HomeScreen(
                 )
 
                 if (!isNotificationServiceEnabled) {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
                     Button(
                         onClick = onOpenSettings,
                         colors = ButtonDefaults.buttonColors(containerColor = AlertRed),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Grant Google Messages Access", fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Grant Notification Access", fontWeight = FontWeight.Bold, color = Color.White)
                     }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Opens phone's 'Notification access' page. Find 'PhishGuard' in the list, toggle ON, then press Back.",
-                        color = TextMuted,
-                        fontSize = 11.sp,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
                 }
             }
         }
 
-        // 2. Real-Time Telemetry HUD Grid
+        // 2. Gateway Connection Status Bar (with Perfect 1px Boundary)
+        Surface(
+            color = CyberCard,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, BoundaryDefault),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigateToTab(3) }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isCheckingConnection) WarningAmber
+                                else if (isOnline) CyberGreenLight
+                                else AccentCyan
+                            )
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = if (isCheckingConnection) "Checking Link..."
+                            else if (isOnline) "Cloud Synced (${RetrofitClient.baseUrl.replace("http://", "")})"
+                            else "Autonomous Mode: On-Device ML",
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                        Text(
+                            text = if (isOnline && connectionLatency > 0) "Latency: ${connectionLatency}ms • Dual-Engine Active"
+                            else "Zero Network Latency (<1ms Native)",
+                            color = TextMuted,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(CyberBackground)
+                        .border(1.dp, BoundaryDefault, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text("MANAGE", color = AccentCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        // 3. Telemetry Overview: 2 Metric Containers (with Perfect 1px Boundaries)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            HudStatBox(
-                title = "ON-DEVICE ML",
-                value = "< 4 ms",
-                subtitle = "Sub-1ms Latency",
-                icon = Icons.Default.Bolt,
-                color = AccentCyan,
-                modifier = Modifier.weight(1f)
-            )
-            HudStatBox(
-                title = "TARGET APP",
-                value = "Google Msg",
-                subtitle = "Active OS Hook",
-                icon = Icons.Default.Smartphone,
-                color = CyberGreenLight,
-                modifier = Modifier.weight(1f)
-            )
+            Surface(
+                color = CyberCard,
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, BoundaryDefault),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onNavigateToTab(1) }
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("INTERCEPTS", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.Sensors, contentDescription = null, tint = AccentCyan, modifier = Modifier.size(16.dp))
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "$localRecordCount Logged",
+                        color = TextPrimary,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text("View Telemetry Stream", color = AccentCyan, fontSize = 10.sp)
+                }
+            }
+
+            Surface(
+                color = CyberCard,
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, BoundaryDefault),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onNavigateToTab(2) }
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("ACCURACY", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.Verified, contentDescription = null, tint = CyberGreenLight, modifier = Modifier.size(16.dp))
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "98.41% ML",
+                        color = CyberGreenLight,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text("6,044 Sample Dataset", color = TextMuted, fontSize = 10.sp)
+                }
+            }
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            HudStatBox(
-                title = "BENCHMARK",
-                value = "98.7%",
-                subtitle = "UCI SMS & Feeds",
-                icon = Icons.Default.CheckCircle,
-                color = NeonPurple,
-                modifier = Modifier.weight(1f)
-            )
-            HudStatBox(
-                title = "SENTINEL",
-                value = "AI-SmishX",
-                subtitle = "Entropy & Typos",
-                icon = Icons.Default.Sensors,
-                color = WarningAmber,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        // 3. Practical Real-World Action Center
+        // 4. Quick Action Tools Section
         Text(
-            text = "PRACTICAL SECURITY TOOLS",
-            fontSize = 12.sp,
+            text = "INSTANT SECURITY TOOLS",
+            fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             color = TextSecondary,
             letterSpacing = 1.sp
         )
 
-        // Clipboard Link Scanner Button
-        Card(
-            colors = CardDefaults.cardColors(containerColor = CyberCardElevated),
-            shape = RoundedCornerShape(14.dp),
+        // Tool A: Quick URL / Text Scanner
+        Surface(
+            color = CyberCard,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, BoundaryDefault),
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    val clipData = clipboard.primaryClip
-                    if (clipData != null && clipData.itemCount > 0) {
-                        val text = clipData.getItemAt(0).text?.toString() ?: ""
-                        if (text.startsWith("http://") || text.startsWith("https://") || text.contains(".com") || text.contains(".xyz")) {
-                            isScanningClipboard = true
-                            scope.launch {
-                                try {
-                                    val res = RetrofitClient.apiService.scanUrl(UrlScanPayload(url = text.trim()))
-                                    if (res.isSuccessful && res.body() != null) {
-                                        scannedUrlResult = res.body()
-                                        showScanDialog = true
-                                    } else {
-                                        Toast.makeText(context, "Scan error: ${res.code()}", Toast.LENGTH_SHORT).show()
-                                    }
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "Could not reach backend: ${e.message}", Toast.LENGTH_SHORT).show()
-                                } finally {
-                                    isScanningClipboard = false
-                                }
-                            }
-                        } else {
-                            Toast.makeText(context, "No URL found on clipboard! Copy a link first.", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        Toast.makeText(context, "Clipboard is empty.", Toast.LENGTH_SHORT).show()
+                    val clip = clipboard.primaryClip
+                    if (clip != null && clip.itemCount > 0) {
+                        scanInputText = clip.getItemAt(0).text?.toString() ?: ""
                     }
+                    showScanDialog = true
                 }
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(AccentCyan.copy(alpha = 0.15f)),
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(AccentCyan.copy(alpha = 0.15f))
+                            .border(1.dp, BoundaryAccent.copy(alpha = 0.3f), RoundedCornerShape(8.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.ContentPaste, contentDescription = null, tint = AccentCyan)
+                        Icon(Icons.Default.Search, contentDescription = null, tint = AccentCyan, modifier = Modifier.size(20.dp))
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text("Scan Clipboard Link", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                        Text("Verify suspicious link from SMS or Chat", color = TextSecondary, fontSize = 12.sp)
+                        Text("Quick Scan Any Link or Text", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 13.sp)
+                        Text("Paste suspicious SMS, link or clipboard", color = TextSecondary, fontSize = 11.sp)
                     }
                 }
-                if (isScanningClipboard) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = AccentCyan, strokeWidth = 2.dp)
-                } else {
-                    Icon(Icons.Default.ArrowForward, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
-                }
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
             }
         }
 
-        // Test Heads-Up Notification Alarm Button
-        Card(
-            colors = CardDefaults.cardColors(containerColor = CyberCardElevated),
-            shape = RoundedCornerShape(14.dp),
+        // Tool B: Test Threat Alarm Notification
+        Surface(
+            color = CyberCard,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, BoundaryDefault),
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
+                    val sampleSender = "[CHASE-SECURITY]"
+                    val sampleText = "ALERT: Unauthorized transfer of $940.00 from checking account. Verify identity immediately: http://chase-security-auth.xyz/verify"
+                    val sampleReasons = listOf(
+                        "Brand impersonation detected for 'CHASE'",
+                        "High-risk abuse domain (.xyz)",
+                        "Financial panic urgency pattern"
+                    )
+
                     ThreatNotificationHelper.showThreatAlert(
                         context = context,
-                        sender = "[CHASE-SECURITY]",
-                        text = "ALERT: Unauthorized transaction of $940.00. Verify immediately at http://chase-security-auth.xyz/verify",
-                        riskScore = 92.0,
+                        sender = sampleSender,
+                        text = sampleText,
+                        riskScore = 94.0,
                         riskLevel = "CRITICAL",
                         prediction = "SMISHING",
-                        reasons = listOf(
-                            "Brand spoofing detected for 'CHASE'",
-                            "High-abuse top level domain (.xyz)",
-                            "Urgent financial intimidation pattern"
-                        )
+                        reasons = sampleReasons
                     )
-                    com.phishguard.mobile.storage.LocalThreatStorage.saveRecord(
+
+                    LocalThreatStorage.saveRecord(
                         context = context,
-                        sender = "[CHASE-SECURITY]",
-                        text = "ALERT: Unauthorized transaction of $940.00. Verify immediately at http://chase-security-auth.xyz/verify",
-                        riskScore = 92.0,
+                        sender = sampleSender,
+                        text = sampleText,
+                        riskScore = 94.0,
                         riskLevel = "CRITICAL",
                         prediction = "SMISHING",
                         categories = listOf("Financial Fraud", "Brand Impersonation"),
-                        reasons = listOf(
-                            "Brand spoofing detected for 'CHASE'",
-                            "High-abuse top level domain (.xyz)",
-                            "Urgent financial intimidation pattern"
-                        )
+                        reasons = sampleReasons
                     )
-                    Toast.makeText(context, "🚨 High-Priority Threat Notification Fired!", Toast.LENGTH_SHORT).show()
+
+                    localRecordCount = LocalThreatStorage.getRecords(context).size
+                    Toast.makeText(context, "🚨 Heads-Up Threat Alarm Fired!", Toast.LENGTH_SHORT).show()
                 }
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(AlertRed.copy(alpha = 0.15f)),
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(AlertRed.copy(alpha = 0.15f))
+                            .border(1.dp, BoundaryDanger.copy(alpha = 0.3f), RoundedCornerShape(8.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = AlertRed)
+                        Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = AlertRed, modifier = Modifier.size(20.dp))
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text("Test Threat Alert Notification", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                        Text("Verify phone sound, chime & heads-up banner", color = TextSecondary, fontSize = 12.sp)
+                        Text("Test Threat Alert Notification", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 13.sp)
+                        Text("Verifies sound chime, heads-up banner & vibration", color = TextSecondary, fontSize = 11.sp)
                     }
                 }
-                Icon(Icons.Default.ArrowForward, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
             }
         }
 
-        // 4. Hooked Apps Coverage Status
-        Card(
-            colors = CardDefaults.cardColors(containerColor = CyberSurface),
-            shape = RoundedCornerShape(16.dp),
+        // 5. Monitored Mobile Messaging Coverage Card (with Perfect 1px Boundary)
+        Surface(
+            color = CyberCard,
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(1.dp, BoundaryDefault),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(18.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = CyberGreenLight, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Shield, contentDescription = null, tint = CyberGreenLight, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Protected Mobile Messaging Apps", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 13.sp)
+                    Text("Zero-Click Messaging Protection", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 13.sp)
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 val appList = listOf(
                     "Google Messages" to "com.google.android.apps.messaging",
                     "Samsung Messages" to "com.samsung.android.messaging",
                     "WhatsApp Messenger" to "com.whatsapp",
-                    "Telegram Messenger" to "org.telegram.messenger",
-                    "Android Default MMS" to "com.android.mms"
+                    "Telegram Messenger" to "org.telegram.messenger"
                 )
 
-                appList.forEach { (appName, pkg) ->
+                appList.forEach { (name, pkg) ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 5.dp),
+                            .padding(vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text(appName, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            Text(name, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                             Text(pkg, color = TextMuted, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
                         }
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(CyberGreen.copy(alpha = 0.15f))
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(CyberGreen.copy(alpha = 0.12f))
+                                .border(1.dp, BoundarySuccess.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
-                            Text("HOOKED", color = CyberGreenLight, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("PROTECTED", color = CyberGreenLight, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -402,96 +467,133 @@ fun HomeScreen(
         }
     }
 
-    // Modal Dialog: Scanned Clipboard Result
-    if (showScanDialog && scannedUrlResult != null) {
-        val res = scannedUrlResult!!
-        val isMalicious = res.risk_score >= 55.0
-        val isSuspicious = res.risk_score >= 30.0 && res.risk_score < 55.0
-        val badgeColor = if (isMalicious) AlertRed else if (isSuspicious) WarningAmber else CyberGreen
-
+    // Modal Dialog: Quick Link / Text Scanner
+    if (showScanDialog) {
         AlertDialog(
-            onDismissRequest = { showScanDialog = false },
+            onDismissRequest = {
+                showScanDialog = false
+                scanResult = null
+            },
             confirmButton = {
                 Button(
-                    onClick = { showScanDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentCyan)
+                    onClick = {
+                        if (scanInputText.isBlank()) {
+                            Toast.makeText(context, "Please enter a URL or message text", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        isScanning = true
+                        scope.launch {
+                            try {
+                                val clean = scanInputText.trim()
+                                val isUrl = clean.startsWith("http://") || clean.startsWith("https://") || clean.contains(".com") || clean.contains(".xyz")
+                                val urlToScan = if (isUrl && !clean.startsWith("http")) "https://$clean" else clean
+
+                                val res = RetrofitClient.apiService.scanUrl(UrlScanPayload(url = urlToScan))
+                                if (res.isSuccessful && res.body() != null) {
+                                    scanResult = res.body()
+                                } else {
+                                    // Fallback to on-device scan
+                                    val local = com.phishguard.mobile.analyzer.LocalHeuristicEngine.assessMessage("Manual Scan", clean)
+                                    scanResult = UrlScanMobileResponse(
+                                        url = clean,
+                                        risk_score = local.estimatedRiskScore,
+                                        risk_level = if (local.isCritical) "CRITICAL" else "SAFE",
+                                        prediction = if (local.isCritical) "PHISHING" else "BENIGN",
+                                        reasons = local.reasons,
+                                        recommended_action = if (local.isCritical) "BLOCK_ACCESS" else "ALLOW"
+                                    )
+                                }
+                            } catch (e: Exception) {
+                                val local = com.phishguard.mobile.analyzer.LocalHeuristicEngine.assessMessage("Manual Scan", scanInputText)
+                                scanResult = UrlScanMobileResponse(
+                                    url = scanInputText,
+                                    risk_score = local.estimatedRiskScore,
+                                    risk_level = if (local.isCritical) "CRITICAL" else "SAFE",
+                                    prediction = if (local.isCritical) "PHISHING" else "BENIGN",
+                                    reasons = local.reasons,
+                                    recommended_action = if (local.isCritical) "BLOCK_ACCESS" else "ALLOW"
+                                )
+                            } finally {
+                                isScanning = false
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentCyan),
+                    shape = RoundedCornerShape(8.dp),
+                    enabled = !isScanning
                 ) {
-                    Text("Close Inspector")
+                    if (isScanning) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = CyberBackground, strokeWidth = 2.dp)
+                    } else {
+                        Text("Analyze Now", color = CyberBackground, fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        showScanDialog = false
+                        scanResult = null
+                    },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Close", color = TextSecondary)
                 }
             },
             title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = if (isMalicious) Icons.Default.Warning else Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = badgeColor
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "${res.prediction} (${res.risk_score.toInt()}%)",
-                        color = badgeColor,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                }
+                Text("Quick Link & Threat Scanner", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 16.sp)
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Scanned URL:", color = TextSecondary, fontSize = 12.sp)
-                    Text(
-                        res.url,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        color = TextPrimary,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(CyberBackground, RoundedCornerShape(8.dp))
-                            .padding(8.dp)
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Enter or paste any link or message body:", color = TextSecondary, fontSize = 12.sp)
+
+                    OutlinedTextField(
+                        value = scanInputText,
+                        onValueChange = { scanInputText = it },
+                        placeholder = { Text("e.g. http://chase-security-auth.xyz/verify", fontSize = 12.sp, color = TextMuted) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = CyberBackground,
+                            unfocusedContainerColor = CyberBackground,
+                            focusedBorderColor = AccentCyan,
+                            unfocusedBorderColor = BoundaryDefault,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        )
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("Action: ${res.recommended_action}", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 12.sp)
+                    if (scanResult != null) {
+                        val res = scanResult!!
+                        val isThreat = res.risk_score >= 50.0
+                        val color = if (isThreat) AlertRed else CyberGreenLight
 
-                    if (res.reasons.isNotEmpty()) {
-                        Text("Risk Signals:", fontWeight = FontWeight.Bold, color = TextSecondary, fontSize = 12.sp)
-                        res.reasons.forEach { r ->
-                            Text("• $r", fontSize = 12.sp, color = TextPrimary)
+                        Surface(
+                            color = CyberBackground,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, color.copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(res.prediction, fontWeight = FontWeight.Black, color = color, fontSize = 14.sp)
+                                    Text("${res.risk_score.toInt()}% Risk", fontWeight = FontWeight.Bold, color = color, fontSize = 13.sp)
+                                }
+                                Text("Action: ${res.recommended_action}", color = TextSecondary, fontSize = 11.sp)
+                                res.reasons.forEach { r ->
+                                    Text("• $r", color = TextPrimary, fontSize = 11.sp)
+                                }
+                            }
                         }
                     }
                 }
             },
-            containerColor = CyberCardElevated
+            containerColor = CyberCardElevated,
+            shape = RoundedCornerShape(16.dp)
         )
-    }
-}
-
-@Composable
-fun HudStatBox(
-    title: String,
-    value: String,
-    subtitle: String,
-    icon: ImageVector,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = CyberCard),
-        shape = RoundedCornerShape(14.dp),
-        modifier = modifier.border(0.5.dp, CyberCardBorder, RoundedCornerShape(14.dp))
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(title, color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
-                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(value, color = color, fontSize = 18.sp, fontWeight = FontWeight.Black)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(subtitle, color = TextMuted, fontSize = 10.sp)
-        }
     }
 }

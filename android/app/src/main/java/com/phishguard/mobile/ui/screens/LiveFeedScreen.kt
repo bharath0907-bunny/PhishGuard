@@ -4,6 +4,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,7 +53,6 @@ fun LiveFeedScreen() {
                 if (res.isSuccessful && res.body() != null) {
                     isCloudConnected = true
                     val cloudList = res.body()!!
-                    // Merge local and cloud records without duplicates
                     val merged = (localRecords + cloudList).distinctBy { "${it.sender}_${it.raw_text}" }
                     records = merged
                 } else {
@@ -74,9 +74,8 @@ fun LiveFeedScreen() {
         val matchesSearch = item.sender.contains(searchQuery, ignoreCase = true) ||
                 item.raw_text.contains(searchQuery, ignoreCase = true)
         val matchesFilter = when (selectedFilter) {
-            "CRITICAL" -> item.risk_score >= 60.0
-            "SUSPICIOUS" -> item.risk_score >= 35.0 && item.risk_score < 60.0
-            "SAFE" -> item.risk_score < 35.0
+            "THREATS" -> item.risk_score >= 40.0
+            "SAFE" -> item.risk_score < 40.0
             else -> true
         }
         matchesSearch && matchesFilter
@@ -88,7 +87,7 @@ fun LiveFeedScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Top Header
+        // Header Row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -96,13 +95,13 @@ fun LiveFeedScreen() {
         ) {
             Column {
                 Text(
-                    text = "Live Threat Telemetry",
+                    text = "Intercept Telemetry",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
                 Text(
-                    text = "Real-Time Google Messages & SMS Stream",
+                    text = "Google Messages & SMS Protection Stream",
                     fontSize = 12.sp,
                     color = TextSecondary
                 )
@@ -113,169 +112,164 @@ fun LiveFeedScreen() {
                         onClick = {
                             LocalThreatStorage.clearRecords(context)
                             records = emptyList()
-                            Toast.makeText(context, "Telemetry history cleared", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "History cleared", Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(CyberCardElevated)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(CyberCard)
+                            .border(1.dp, BoundaryDefault, RoundedCornerShape(8.dp))
                     ) {
-                        Icon(Icons.Default.DeleteOutline, contentDescription = "Clear", tint = TextMuted)
+                        Icon(Icons.Default.DeleteOutline, contentDescription = "Clear", tint = TextMuted, modifier = Modifier.size(18.dp))
                     }
                 }
                 IconButton(
                     onClick = { refresh() },
                     modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(CyberCardElevated)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(CyberCard)
+                        .border(1.dp, BoundaryDefault, RoundedCornerShape(8.dp))
                 ) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = AccentCyan)
+                    if (isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = AccentCyan, strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = AccentCyan, modifier = Modifier.size(18.dp))
+                    }
                 }
             }
         }
 
-        // Active Engine Status Banner (Autonomous On-Device vs Cloud)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .background(if (isCloudConnected) CyberGreen.copy(alpha = 0.12f) else AccentCyan.copy(alpha = 0.10f))
-                .border(
-                    width = 1.dp,
-                    color = if (isCloudConnected) CyberGreen.copy(alpha = 0.35f) else AccentCyan.copy(alpha = 0.30f),
-                    shape = RoundedCornerShape(10.dp)
-                )
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+        // Active Mode Status Container (1px Boundary)
+        Surface(
+            color = CyberCard,
+            shape = RoundedCornerShape(10.dp),
+            border = BorderStroke(1.dp, BoundaryDefault),
+            modifier = Modifier.fillMaxWidth()
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(7.dp)
+                            .size(8.dp)
                             .clip(CircleShape)
                             .background(if (isCloudConnected) CyberGreenLight else AccentCyan)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isCloudConnected) "DUAL-ENGINE CLOUD SYNCED" else "ON-DEVICE ML SENTINEL (<1ms)",
+                        text = if (isCloudConnected) "CLOUD SYNCED & ON-DEVICE" else "AUTONOMOUS ON-DEVICE SENTINEL",
                         color = if (isCloudConnected) CyberGreenLight else AccentCyan,
-                        fontSize = 11.sp,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace
                     )
                 }
                 Text(
-                    text = "${records.size} INTERCEPTS",
+                    text = "${records.size} LOGGED",
                     color = TextMuted,
                     fontSize = 10.sp,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
 
-        // Search Bar
+        // Search Bar (1px Boundary)
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Search sender or message content...", fontSize = 13.sp, color = TextMuted) },
+            placeholder = { Text("Filter sender or message keywords...", fontSize = 12.sp, color = TextMuted) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp)) },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(10.dp),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = CyberCard,
                 unfocusedContainerColor = CyberCard,
                 focusedBorderColor = AccentCyan,
-                unfocusedBorderColor = CyberCardBorder,
+                unfocusedBorderColor = BoundaryDefault,
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary
             )
         )
 
-        // Severity Filter Chips
+        // Filter Chips (1px Boundary)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            listOf("ALL", "CRITICAL", "SUSPICIOUS", "SAFE").forEach { filter ->
+            listOf("ALL", "THREATS", "SAFE").forEach { filter ->
                 val isSelected = selectedFilter == filter
                 val chipColor = when (filter) {
-                    "CRITICAL" -> AlertRed
-                    "SUSPICIOUS" -> WarningAmber
+                    "THREATS" -> AlertRed
                     "SAFE" -> CyberGreenLight
                     else -> AccentCyan
                 }
 
-                Box(
+                Surface(
+                    color = if (isSelected) chipColor.copy(alpha = 0.15f) else CyberCard,
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, if (isSelected) chipColor else BoundaryDefault),
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSelected) chipColor.copy(alpha = 0.2f) else CyberCard)
-                        .border(
-                            width = 1.dp,
-                            color = if (isSelected) chipColor else CyberCardBorder,
-                            shape = RoundedCornerShape(8.dp)
-                        )
                         .clickable { selectedFilter = filter }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = filter,
                         color = if (isSelected) chipColor else TextSecondary,
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Content Feed
+        // Telemetry Feed List
         if (filteredRecords.isEmpty()) {
-            Box(
+            Surface(
+                color = CyberCard,
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, BoundaryDefault),
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Box(
                         modifier = Modifier
-                            .size(64.dp)
+                            .size(54.dp)
                             .clip(CircleShape)
-                            .background(AccentCyan.copy(alpha = 0.12f)),
+                            .background(AccentCyan.copy(alpha = 0.12f))
+                            .border(1.dp, BoundaryAccent.copy(alpha = 0.3f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Default.Sensors,
-                            contentDescription = null,
-                            tint = AccentCyan,
-                            modifier = Modifier.size(36.dp)
-                        )
+                        Icon(Icons.Default.Sensors, contentDescription = null, tint = AccentCyan, modifier = Modifier.size(28.dp))
                     }
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "Awaiting Incoming Messages",
+                        text = "Awaiting Incoming Messages",
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary,
-                        fontSize = 16.sp
+                        fontSize = 15.sp
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        "Zero-click interception is active for Google Messages & SMS. Incoming notifications will be analyzed in <1ms and recorded here in real-time.",
+                        text = "Zero-click interception will capture and record SMS here in real-time as notifications arrive.",
                         color = TextSecondary,
                         fontSize = 12.sp,
-                        lineHeight = 17.sp,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
                     OutlinedButton(
                         onClick = {
-                            // Inject a real sample test intercept into local storage
-                            val testRecord = LocalThreatStorage.saveRecord(
+                            LocalThreatStorage.saveRecord(
                                 context = context,
                                 sender = "[CHASE-SECURITY]",
                                 text = "ALERT: Unauthorized transfer of $940.00 from your account. Cancel immediately at http://chase-security-auth.xyz/verify",
@@ -284,37 +278,36 @@ fun LiveFeedScreen() {
                                 prediction = "SMISHING",
                                 categories = listOf("Financial Fraud", "Brand Impersonation"),
                                 reasons = listOf(
-                                    "On-Device ML: High-confidence smishing vector (94%)",
-                                    "Impersonates reputable institution (CHASE)",
+                                    "Brand spoofing detected for 'CHASE'",
                                     "High-pressure psychological urgency detected",
-                                    "Link uses high-risk TLD (.xyz)"
+                                    "Link uses suspicious unverified domain (.xyz)"
                                 )
                             )
                             records = LocalThreatStorage.getRecords(context)
-                            Toast.makeText(context, "Simulated intercept added to Telemetry!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Sample intercept logged to Telemetry!", Toast.LENGTH_SHORT).show()
                         },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentCyan),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentCyan)
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Record Sample Threat Test", fontSize = 12.sp)
+                        Text("Inject Sample Threat For Demo", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         } else {
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(filteredRecords, key = { it.id }) { item ->
-                    ExpandableInterceptCard(
+                    TelemetryItemCard(
                         item = item,
                         onCopyIoc = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clipText = "THREAT IOC:\nSender: ${item.sender}\nScore: ${item.risk_score}\nText: ${item.raw_text}\nReasons: ${item.reasons.joinToString("; ")}"
+                            val clipText = "THREAT IOC:\nSender: ${item.sender}\nScore: ${item.risk_score}%\nText: ${item.raw_text}\nReasons: ${item.reasons.joinToString("; ")}"
                             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("IOC", clipText))
-                            Toast.makeText(context, "Threat IOC copied to clipboard!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Threat IOC copied to clipboard", Toast.LENGTH_SHORT).show()
                         }
                     )
                 }
@@ -324,30 +317,27 @@ fun LiveFeedScreen() {
 }
 
 @Composable
-fun ExpandableInterceptCard(
+fun TelemetryItemCard(
     item: InterceptRecord,
     onCopyIoc: () -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
-    val isCritical = item.risk_score >= 60.0
-    val isSuspicious = item.risk_score >= 35.0 && item.risk_score < 60.0
-    val badgeColor = if (isCritical) AlertRed else if (isSuspicious) WarningAmber else CyberGreenLight
+    val isThreat = item.risk_score >= 50.0
+    val isWarning = item.risk_score in 30.0..49.9
+    val badgeColor = if (isThreat) AlertRed else if (isWarning) WarningAmber else CyberGreenLight
+    val borderColor = if (isThreat) BoundaryDanger.copy(alpha = 0.5f) else if (isWarning) BoundaryWarning.copy(alpha = 0.5f) else BoundarySuccess.copy(alpha = 0.4f)
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = CyberCard),
-        shape = RoundedCornerShape(16.dp),
+    Surface(
+        color = CyberCard,
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, borderColor),
         modifier = Modifier
             .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = badgeColor.copy(alpha = if (isCritical) 0.5f else 0.25f),
-                shape = RoundedCornerShape(16.dp)
-            )
             .clickable { isExpanded = !isExpanded }
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Header Row
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Top Row: Sender & Risk Score Pill
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -356,16 +346,17 @@ fun ExpandableInterceptCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(34.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(badgeColor.copy(alpha = 0.15f)),
+                            .size(30.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(badgeColor.copy(alpha = 0.15f))
+                            .border(1.dp, badgeColor.copy(alpha = 0.3f), RoundedCornerShape(6.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = if (isCritical) Icons.Default.Warning else if (isSuspicious) Icons.Default.Warning else Icons.Default.Security,
+                            imageVector = if (isThreat) Icons.Default.Warning else Icons.Default.CheckCircle,
                             contentDescription = null,
                             tint = badgeColor,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                     Spacer(modifier = Modifier.width(10.dp))
@@ -374,7 +365,7 @@ fun ExpandableInterceptCard(
                             text = item.sender,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary,
-                            fontSize = 14.sp
+                            fontSize = 13.sp
                         )
                         Text(
                             text = "Google Messages • ${item.prediction}",
@@ -387,10 +378,10 @@ fun ExpandableInterceptCard(
                 // Risk Score Pill
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(badgeColor.copy(alpha = 0.18f))
-                        .border(1.dp, badgeColor.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(badgeColor.copy(alpha = 0.15f))
+                        .border(1.dp, badgeColor.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
                         text = "${item.risk_score.toInt()}% RISK",
@@ -404,24 +395,23 @@ fun ExpandableInterceptCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Message Bubble Text
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(CyberBackground)
-                    .padding(12.dp)
+            // Message Quote Container (Pitch dark background with 1px border)
+            Surface(
+                color = CyberBackground,
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.dp, BoundaryDefault),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = item.raw_text,
                     color = TextPrimary,
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    fontFamily = FontFamily.SansSerif
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                    modifier = Modifier.padding(10.dp)
                 )
             }
 
-            // Expandable Technical Inspection Section
+            // Expandable Explainable AI Attribution
             AnimatedVisibility(
                 visible = isExpanded,
                 enter = expandVertically() + fadeIn(),
@@ -430,20 +420,20 @@ fun ExpandableInterceptCard(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 12.dp)
+                        .padding(top = 10.dp)
                 ) {
-                    HorizontalDivider(color = CyberCardBorder, thickness = 0.5.dp)
-                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = BoundaryDefault, thickness = 0.5.dp)
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "EXPLAINABLE AI (XAI) ATTRIBUTION",
+                        text = "EXPLAINABLE AI SIGNALS",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = AccentCyan,
-                        letterSpacing = 1.sp
+                        letterSpacing = 0.5.sp
                     )
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     item.reasons.forEach { reason ->
                         Row(
@@ -457,15 +447,11 @@ fun ExpandableInterceptCard(
                                     .background(badgeColor)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = reason,
-                                color = TextSecondary,
-                                fontSize = 11.sp
-                            )
+                            Text(text = reason, color = TextSecondary, fontSize = 11.sp)
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -473,7 +459,7 @@ fun ExpandableInterceptCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Timestamp: ${item.created_at}",
+                            text = item.created_at,
                             color = TextMuted,
                             fontSize = 10.sp,
                             fontFamily = FontFamily.Monospace
@@ -484,9 +470,9 @@ fun ExpandableInterceptCard(
                             shape = RoundedCornerShape(6.dp),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentCyan),
-                            modifier = Modifier.height(28.dp)
+                            modifier = Modifier.height(26.dp)
                         ) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(12.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Copy IOC", fontSize = 10.sp)
                         }

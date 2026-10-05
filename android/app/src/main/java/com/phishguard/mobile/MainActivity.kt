@@ -6,8 +6,10 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -77,175 +79,188 @@ fun PhishGuardApp(
     ) {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth().padding(end = 8.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(34.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(AccentCyan.copy(alpha = 0.2f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Shield,
-                                        contentDescription = "PhishGuard Logo",
-                                        tint = AccentCyan,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Text(
-                                        text = "PhishGuard",
-                                        color = TextPrimary,
-                                        fontWeight = FontWeight.Black,
-                                        fontSize = 17.sp,
-                                        letterSpacing = 0.5.sp
-                                    )
-                                    Text(
-                                        text = "Google Messages Sentinel",
-                                        color = TextSecondary,
-                                        fontSize = 10.sp
-                                    )
-                                }
-                            }
-
-                            // Engine Status Pill
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(if (isNotificationServiceEnabled) CyberGreen.copy(alpha = 0.18f) else AlertRed.copy(alpha = 0.18f))
-                                    .border(
-                                        width = 1.dp,
-                                        color = if (isNotificationServiceEnabled) CyberGreen.copy(alpha = 0.4f) else AlertRed.copy(alpha = 0.4f),
-                                        shape = RoundedCornerShape(20.dp)
-                                    )
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                Surface(
+                    color = CyberSurface,
+                    border = BorderStroke(0.dp, Color.Transparent),
+                    modifier = Modifier.fillMaxWidth().border(width = 1.dp, color = BoundaryDefault)
+                ) {
+                    TopAppBar(
+                        title = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth().padding(end = 8.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Box(
                                         modifier = Modifier
-                                            .size(7.dp)
-                                            .clip(CircleShape)
-                                            .background(if (isNotificationServiceEnabled) CyberGreenLight else AlertRed)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = if (isNotificationServiceEnabled) "ARMED" else "OFFLINE",
-                                        color = if (isNotificationServiceEnabled) CyberGreenLight else AlertRed,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp,
-                                        fontFamily = FontFamily.Monospace
-                                    )
+                                            .size(34.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(AccentCyan.copy(alpha = 0.15f))
+                                            .border(1.dp, BoundaryAccent.copy(alpha = 0.4f), RoundedCornerShape(8.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Shield,
+                                            contentDescription = "PhishGuard Logo",
+                                            tint = AccentCyan,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "PhishGuard",
+                                            color = TextPrimary,
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 17.sp,
+                                            letterSpacing = 0.5.sp
+                                        )
+                                        Text(
+                                            text = "Google Messages Sentinel",
+                                            color = TextSecondary,
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                }
+
+                                // Engine Status Pill (Tappable to Settings)
+                                Surface(
+                                    color = if (isNotificationServiceEnabled) CyberGreen.copy(alpha = 0.15f) else AlertRed.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(20.dp),
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (isNotificationServiceEnabled) BoundarySuccess.copy(alpha = 0.5f) else BoundaryDanger.copy(alpha = 0.5f)
+                                    ),
+                                    modifier = Modifier.clickable { selectedTab = 3 }
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(7.dp)
+                                                .clip(CircleShape)
+                                                .background(if (isNotificationServiceEnabled) CyberGreenLight else AlertRed)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = if (isNotificationServiceEnabled) "ARMED" else "OFFLINE",
+                                            color = if (isNotificationServiceEnabled) CyberGreenLight else AlertRed,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 10.sp,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
                                 }
                             }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = CyberSurface
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = CyberSurface
+                        )
                     )
-                )
+                }
             },
             bottomBar = {
-                NavigationBar(
-                    containerColor = CyberSurface,
-                    tonalElevation = 8.dp,
-                    modifier = Modifier.border(width = 0.5.dp, color = CyberCardBorder)
+                Surface(
+                    color = CyberSurface,
+                    border = BorderStroke(1.dp, BoundaryDefault),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    NavigationBarItem(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        icon = {
-                            Icon(
-                                Icons.Default.Shield,
-                                contentDescription = "Shield",
-                                tint = if (selectedTab == 0) AccentCyan else TextSecondary
+                    NavigationBar(
+                        containerColor = CyberSurface,
+                        tonalElevation = 0.dp
+                    ) {
+                        NavigationBarItem(
+                            selected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            icon = {
+                                Icon(
+                                    Icons.Default.Shield,
+                                    contentDescription = "Shield",
+                                    tint = if (selectedTab == 0) AccentCyan else TextSecondary
+                                )
+                            },
+                            label = {
+                                Text(
+                                    "Shield",
+                                    color = if (selectedTab == 0) AccentCyan else TextSecondary,
+                                    fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 11.sp
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                indicatorColor = AccentCyan.copy(alpha = 0.18f)
                             )
-                        },
-                        label = {
-                            Text(
-                                "Shield",
-                                color = if (selectedTab == 0) AccentCyan else TextSecondary,
-                                fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
-                                fontSize = 11.sp
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            indicatorColor = AccentCyan.copy(alpha = 0.18f)
                         )
-                    )
-                    NavigationBarItem(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        icon = {
-                            Icon(
-                                Icons.Default.Sensors,
-                                contentDescription = "Live Feed",
-                                tint = if (selectedTab == 1) AccentCyan else TextSecondary
+                        NavigationBarItem(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            icon = {
+                                Icon(
+                                    Icons.Default.Sensors,
+                                    contentDescription = "Telemetry",
+                                    tint = if (selectedTab == 1) AccentCyan else TextSecondary
+                                )
+                            },
+                            label = {
+                                Text(
+                                    "Telemetry",
+                                    color = if (selectedTab == 1) AccentCyan else TextSecondary,
+                                    fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 11.sp
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                indicatorColor = AccentCyan.copy(alpha = 0.18f)
                             )
-                        },
-                        label = {
-                            Text(
-                                "Telemetry",
-                                color = if (selectedTab == 1) AccentCyan else TextSecondary,
-                                fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
-                                fontSize = 11.sp
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            indicatorColor = AccentCyan.copy(alpha = 0.18f)
                         )
-                    )
-                    NavigationBarItem(
-                        selected = selectedTab == 2,
-                        onClick = { selectedTab = 2 },
-                        icon = {
-                            Icon(
-                                Icons.Default.Science,
-                                contentDescription = "Simulator",
-                                tint = if (selectedTab == 2) AccentCyan else TextSecondary
+                        NavigationBarItem(
+                            selected = selectedTab == 2,
+                            onClick = { selectedTab = 2 },
+                            icon = {
+                                Icon(
+                                    Icons.Default.Science,
+                                    contentDescription = "Test Lab",
+                                    tint = if (selectedTab == 2) AccentCyan else TextSecondary
+                                )
+                            },
+                            label = {
+                                Text(
+                                    "Test Lab",
+                                    color = if (selectedTab == 2) AccentCyan else TextSecondary,
+                                    fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 11.sp
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                indicatorColor = AccentCyan.copy(alpha = 0.18f)
                             )
-                        },
-                        label = {
-                            Text(
-                                "Attack Lab",
-                                color = if (selectedTab == 2) AccentCyan else TextSecondary,
-                                fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal,
-                                fontSize = 11.sp
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            indicatorColor = AccentCyan.copy(alpha = 0.18f)
                         )
-                    )
-                    NavigationBarItem(
-                        selected = selectedTab == 3,
-                        onClick = { selectedTab = 3 },
-                        icon = {
-                            Icon(
-                                Icons.Default.Tune,
-                                contentDescription = "Settings",
-                                tint = if (selectedTab == 3) AccentCyan else TextSecondary
+                        NavigationBarItem(
+                            selected = selectedTab == 3,
+                            onClick = { selectedTab = 3 },
+                            icon = {
+                                Icon(
+                                    Icons.Default.Tune,
+                                    contentDescription = "Settings",
+                                    tint = if (selectedTab == 3) AccentCyan else TextSecondary
+                                )
+                            },
+                            label = {
+                                Text(
+                                    "Settings",
+                                    color = if (selectedTab == 3) AccentCyan else TextSecondary,
+                                    fontWeight = if (selectedTab == 3) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 11.sp
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                indicatorColor = AccentCyan.copy(alpha = 0.18f)
                             )
-                        },
-                        label = {
-                            Text(
-                                "Policies",
-                                color = if (selectedTab == 3) AccentCyan else TextSecondary,
-                                fontWeight = if (selectedTab == 3) FontWeight.Bold else FontWeight.Normal,
-                                fontSize = 11.sp
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            indicatorColor = AccentCyan.copy(alpha = 0.18f)
                         )
-                    )
+                    }
                 }
             }
         ) { padding ->
@@ -258,7 +273,8 @@ fun PhishGuardApp(
                 when (selectedTab) {
                     0 -> HomeScreen(
                         isNotificationServiceEnabled = isNotificationServiceEnabled,
-                        onOpenSettings = onOpenNotificationSettings
+                        onOpenSettings = onOpenNotificationSettings,
+                        onNavigateToTab = { selectedTab = it }
                     )
                     1 -> LiveFeedScreen()
                     2 -> SimulatorScreen()
@@ -268,3 +284,4 @@ fun PhishGuardApp(
         }
     }
 }
+
