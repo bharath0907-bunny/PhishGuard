@@ -185,7 +185,7 @@ fun PhishGuardApp(
                         onClick = { selectedTab = 1 },
                         icon = {
                             Icon(
-                                Icons.Default.Radar,
+                                Icons.Default.Sensors,
                                 contentDescription = "Live Feed",
                                 tint = if (selectedTab == 1) AccentCyan else TextSecondary
                             )

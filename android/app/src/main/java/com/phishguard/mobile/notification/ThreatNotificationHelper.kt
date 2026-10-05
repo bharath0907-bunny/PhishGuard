@@ -50,6 +50,7 @@ object ThreatNotificationHelper {
             putExtra("EXTRA_THREAT_SENDER", sender)
             putExtra("EXTRA_THREAT_TEXT", text)
             putExtra("EXTRA_THREAT_SCORE", riskScore)
+            putExtra("EXTRA_THREAT_PREDICTION", prediction)
             putExtra("EXTRA_THREAT_REASONS", ArrayList(reasons))
         }
 
@@ -64,7 +65,7 @@ object ThreatNotificationHelper {
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_error)
-            .setContentTitle("⚠️ SMISHING DETECTED: $sender")
+            .setContentTitle("⚠️ $prediction DETECTED: $sender")
             .setContentText("Risk Score: ${riskScore.toInt()}/100 ($riskLevel) - $primaryReason")
             .setStyle(
                 NotificationCompat.BigTextStyle()

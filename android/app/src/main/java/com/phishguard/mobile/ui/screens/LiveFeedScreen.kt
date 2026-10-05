@@ -210,7 +210,7 @@ fun LiveFeedScreen() {
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        Icons.Default.Radar,
+                        Icons.Default.Sensors,
                         contentDescription = null,
                         tint = TextMuted,
                         modifier = Modifier.size(54.dp)
@@ -291,7 +291,7 @@ fun ExpandableInterceptCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = if (isCritical) Icons.Default.ShieldAlert else if (isSuspicious) Icons.Default.Warning else Icons.Default.Shield,
+                            imageVector = if (isCritical) Icons.Default.Warning else if (isSuspicious) Icons.Default.Warning else Icons.Default.Security,
                             contentDescription = null,
                             tint = badgeColor,
                             modifier = Modifier.size(18.dp)
@@ -355,7 +355,7 @@ fun ExpandableInterceptCard(
                         .fillMaxWidth()
                         .padding(top = 12.dp)
                 ) {
-                    Divider(color = CyberCardBorder, thickness = 0.5.dp)
+                    HorizontalDivider(color = CyberCardBorder, thickness = 0.5.dp)
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(

@@ -205,7 +205,7 @@ fun SettingsScreen() {
                     onCheckedChange = { soundAlertsEnabled = it }
                 )
 
-                Divider(color = CyberCardBorder, thickness = 0.5.dp)
+                HorizontalDivider(color = CyberCardBorder, thickness = 0.5.dp)
 
                 PolicyRow(
                     title = "Offline On-Device ML Sentinel",
@@ -214,7 +214,7 @@ fun SettingsScreen() {
                     onCheckedChange = { autoBlockEnabled = it }
                 )
 
-                Divider(color = CyberCardBorder, thickness = 0.5.dp)
+                HorizontalDivider(color = CyberCardBorder, thickness = 0.5.dp)
 
                 PolicyRow(
                     title = "Aggressive Brand Spoofing Check",
@@ -223,7 +223,7 @@ fun SettingsScreen() {
                     onCheckedChange = { aggressiveBrandCheck = it }
                 )
 
-                Divider(color = CyberCardBorder, thickness = 0.5.dp)
+                HorizontalDivider(color = CyberCardBorder, thickness = 0.5.dp)
 
                 PolicyRow(
                     title = "Clipboard URL Protection Sentinel",

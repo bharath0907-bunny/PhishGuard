@@ -200,7 +200,7 @@ fun HomeScreen(
                 title = "SENTINEL",
                 value = "AI-SmishX",
                 subtitle = "Entropy & Typos",
-                icon = Icons.Default.Radar,
+                icon = Icons.Default.Sensors,
                 color = WarningAmber,
                 modifier = Modifier.weight(1f)
             )
@@ -266,7 +266,7 @@ fun HomeScreen(
                             .background(AccentCyan.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.ContentPasteSearch, contentDescription = null, tint = AccentCyan)
+                        Icon(Icons.Default.ContentPaste, contentDescription = null, tint = AccentCyan)
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
@@ -277,7 +277,7 @@ fun HomeScreen(
                 if (isScanningClipboard) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), color = AccentCyan, strokeWidth = 2.dp)
                 } else {
-                    Icon(Icons.Default.ArrowForwardIos, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.ArrowForward, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
                 }
             }
         }
@@ -328,7 +328,7 @@ fun HomeScreen(
                         Text("Verify phone sound, chime & heads-up banner", color = TextSecondary, fontSize = 12.sp)
                     }
                 }
-                Icon(Icons.Default.ArrowForwardIos, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
+                Icon(Icons.Default.ArrowForward, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
             }
         }
 
@@ -401,7 +401,7 @@ fun HomeScreen(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = if (isMalicious) Icons.Default.ShieldAlert else Icons.Default.ShieldCheck,
+                        imageVector = if (isMalicious) Icons.Default.Warning else Icons.Default.CheckCircle,
                         contentDescription = null,
                         tint = badgeColor
                     )
