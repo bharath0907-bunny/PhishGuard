@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { GoogleMessageEvent } from '../types';
 import { submitFeedback } from '../services/api';
+import { GoogleMessageSimulator } from './GoogleMessageSimulator';
 
 interface LiveMessageFeedProps {
   messages: GoogleMessageEvent[];
@@ -40,6 +41,7 @@ export const LiveMessageFeed: React.FC<LiveMessageFeedProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterSeverity, setFilterSeverity] = useState<string>('ALL');
   const [feedbackStatus, setFeedbackStatus] = useState<Record<string, string>>({});
+  const [showSimulator, setShowSimulator] = useState<boolean>(false);
 
   const handleFeedback = async (id: string, verdict: string) => {
     try {
@@ -164,11 +166,30 @@ export const LiveMessageFeed: React.FC<LiveMessageFeedProps> = ({
             </button>
           )}
 
+          <button
+            onClick={() => setShowSimulator(prev => !prev)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all ${
+              showSimulator 
+                ? 'bg-cyan-500/25 text-cyan-300 border-cyan-500/50 shadow-md shadow-cyan-500/25' 
+                : 'btn-secondary text-xs'
+            }`}
+          >
+            <Radio className="w-3.5 h-3.5 text-cyan-400" />
+            {showSimulator ? 'Hide Simulator' : 'Test / Inject Attack Lures'}
+          </button>
+
           <button onClick={onRefresh} className="btn-secondary text-xs">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
         </div>
       </div>
+
+      {/* Embedded 1-Click Google Messages Simulator Drawer */}
+      {showSimulator && (
+        <div className="animate-fadeIn">
+          <GoogleMessageSimulator onMessageSent={onRefresh} />
+        </div>
+      )}
 
       {/* Message Feed List */}
       <div className="glass-panel p-6 space-y-4">

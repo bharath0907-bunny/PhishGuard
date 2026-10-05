@@ -135,3 +135,22 @@ export async function triggerLiveStreamEvent(): Promise<any> {
   if (!res.ok) throw new Error('Failed to trigger simulation stream');
   return res.json();
 }
+
+export async function importDataset(datasetName: string, items: Array<{ type: string; content: string; sender?: string; subject?: string; ground_truth?: string }>): Promise<any> {
+  const res = await fetch(`${API_BASE}/research/import-dataset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dataset_name: datasetName, items })
+  });
+  if (!res.ok) throw new Error('Dataset import failed');
+  return res.json();
+}
+
+export async function triggerModelRetrain(): Promise<any> {
+  const res = await fetch(`${API_BASE}/research/retrain`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (!res.ok) throw new Error('Model retraining failed');
+  return res.json();
+}

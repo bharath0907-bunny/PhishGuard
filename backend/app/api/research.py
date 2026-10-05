@@ -577,3 +577,123 @@ async def trigger_simulated_event(background_tasks: BackgroundTasks, db: Session
 
     background_tasks.add_task(manager.broadcast, event_payload)
     return {"status": "DISPATCHED", "event": event_payload}
+
+class DatasetImportItem(BaseModel):
+    type: str = Field("SMS", description="SMS | URL | EMAIL")
+    sender: Optional[str] = Field(None, example="+18005550199")
+    subject: Optional[str] = Field(None, example="Account Alert")
+    content: str = Field(..., description="Message text, URL, or email body")
+    ground_truth: Optional[str] = Field(None, description="SMISHING | PHISHING | BENIGN")
+    source: Optional[str] = Field("DATASET_IMPORT", description="Origin tag")
+
+class DatasetImportRequest(BaseModel):
+    dataset_name: Optional[str] = "Custom Imported Dataset"
+    items: List[DatasetImportItem]
+
+@research_router.post("/import-dataset")
+def import_dataset(payload: DatasetImportRequest, db: Session = Depends(get_db)):
+    """
+    Inserts and indexes single or bulk dataset records (SMS, URLs, Emails) directly into the database.
+    Evaluates each record through the risk engine and persists detection metadata for empirical analysis.
+    """
+    sms_count = 0
+    url_count = 0
+    email_count = 0
+    records_saved = []
+
+    for item in payload.items:
+        itype = item.type.upper().strip()
+        if itype == "URL":
+            res = risk_engine.evaluate_url(item.content, source=item.source or "BULK_IMPORT")
+            record = UrlScanRecord(
+                url=item.content,
+                normalized_domain=res["features"].get("tld", ""),
+                risk_score=res["risk_score"],
+                risk_level=res["risk_level"],
+                prediction=res["prediction"],
+                confidence=res["confidence"],
+                features=res["features"],
+                reasons=res["reasons"],
+                source=item.source or "BULK_IMPORT"
+            )
+            db.add(record)
+            url_count += 1
+            records_saved.append({"type": "URL", "target": item.content, "risk_score": res["risk_score"], "prediction": res["prediction"]})
+
+        elif itype == "EMAIL":
+            res = risk_engine.evaluate_email(item.sender or "notice@domain.com", item.subject or "Notification", item.content)
+            record = EmailScanRecord(
+                sender=item.sender or "notice@domain.com",
+                subject=item.subject or "Notification",
+                body=item.content,
+                risk_score=res["risk_score"],
+                risk_level=res["risk_level"],
+                prediction=res["prediction"],
+                reasons=res["reasons"]
+            )
+            db.add(record)
+            email_count += 1
+            records_saved.append({"type": "EMAIL", "target": item.subject or item.content[:30], "risk_score": res["risk_score"], "prediction": res["prediction"]})
+
+        else: # SMS / Google Message
+            res = risk_engine.evaluate_google_message(item.sender or "+18005550199", item.content)
+            record = InterceptedMessage(
+                sender=item.sender or "+18005550199",
+                raw_text=item.content,
+                source_app="com.google.android.apps.messaging",
+                device_id="dataset-importer",
+                extracted_urls=[u["url"] for u in res["extracted_urls"]],
+                risk_score=res["risk_score"],
+                risk_level=res["risk_level"],
+                prediction=res["prediction"],
+                confidence=res["confidence"],
+                threat_categories=res["threat_categories"],
+                reasons=res["reasons"],
+                action_taken=res["recommended_action"]
+            )
+            db.add(record)
+            sms_count += 1
+            records_saved.append({"type": "SMS", "target": item.content[:40], "risk_score": res["risk_score"], "prediction": res["prediction"]})
+
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "dataset_name": payload.dataset_name,
+        "total_imported": len(payload.items),
+        "breakdown": {
+            "sms_messages": sms_count,
+            "urls": url_count,
+            "emails": email_count
+        },
+        "preview": records_saved[:10]
+    }
+
+@research_router.post("/retrain")
+def retrain_model_pipeline():
+    """
+    Executes the NLP smishing classifier training pipeline on updated datasets.
+    Re-exports portable weights and updates runtime in-memory classifier state.
+    """
+    try:
+        from ..ml.train_model import train_and_export_model
+        from ..ml.smishing_classifier import _load_weights
+        
+        acc, f1 = train_and_export_model()
+        _load_weights() # Hot-reload weights into active memory
+        
+        return {
+            "status": "SUCCESS",
+            "message": "Model retraining executed and in-memory weights reloaded successfully.",
+            "metrics": {
+                "accuracy": round(float(acc) * 100, 2),
+                "f1_score": round(float(f1), 4),
+                "model_version": "PhishGuard-SmishX-v2.4"
+            }
+        }
+    except Exception as e:
+        return {
+            "status": "ERROR",
+            "message": f"Retraining failed: {str(e)}"
+        }
+

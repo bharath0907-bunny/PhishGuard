@@ -64,10 +64,30 @@ def _load_weights():
         try:
             with open(weights_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                _MODEL_WEIGHTS = data.get("weights", {})
                 _MODEL_INTERCEPT = data.get("intercept", -0.85)
+                if "weights" in data and isinstance(data["weights"], dict) and len(data["weights"]) > 0:
+                    _MODEL_WEIGHTS = data["weights"]
+                elif "vocabulary" in data and "coefficients" in data:
+                    vocab = data["vocabulary"]
+                    coefs = data["coefficients"]
+                    idf = data.get("idf", [])
+                    _MODEL_WEIGHTS = {}
+                    for word, idx in vocab.items():
+                        if idx < len(coefs):
+                            w = coefs[idx] * (idf[idx] if idx < len(idf) else 1.0)
+                            _MODEL_WEIGHTS[word] = round(w, 2)
         except Exception:
             pass
+
+    # Ensure baseline curated weights are present if file was missing or empty
+    if not _MODEL_WEIGHTS:
+        _MODEL_WEIGHTS = {
+            "chase": 2.85, "unauthorized": 3.10, "wire": 2.90, "verify": 2.45,
+            "login": 2.65, "suspended": 3.40, "locked": 3.25, "usps": 2.95,
+            "redelivery": 3.50, "fedex": 2.60, "appleid": 3.60, "netflix": 2.30,
+            "urgent": 3.20, "immediately": 3.05, "xyz": 3.80, "top": 3.60,
+            "code": -1.80, "otp": -2.20, "meeting": -3.80, "lunch": -3.50
+        }
 
 _load_weights()
 

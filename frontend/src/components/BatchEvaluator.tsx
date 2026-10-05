@@ -9,9 +9,11 @@ import {
   Sparkles, 
   Download, 
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Database,
+  Cpu
 } from 'lucide-react';
-import { runBatchEvaluation } from '../services/api';
+import { runBatchEvaluation, importDataset, triggerModelRetrain } from '../services/api';
 import { BatchEvaluateResponse, BatchItem } from '../types';
 
 const SAMPLE_DATASETS: Record<string, BatchItem[]> = {
@@ -47,6 +49,52 @@ export const BatchEvaluator: React.FC = () => {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [evaluationResult, setEvaluationResult] = useState<BatchEvaluateResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isIngesting, setIsIngesting] = useState<boolean>(false);
+  const [ingestSuccessMessage, setIngestSuccessMessage] = useState<string | null>(null);
+
+  const handleIngestToDatabase = async () => {
+    const items = parseInputToItems();
+    if (items.length === 0) {
+      setErrorMessage('Please provide dataset items to ingest.');
+      return;
+    }
+    setIsIngesting(true);
+    setIngestSuccessMessage(null);
+    setErrorMessage(null);
+    try {
+      const payloadItems = items.map(i => ({
+        type: i.type,
+        sender: i.sender || (i.type === 'SMS' ? '+18005550199' : undefined),
+        content: i.text,
+        ground_truth: i.ground_truth,
+        source: 'DATASET_BATCH_INGEST'
+      }));
+      const res = await importDataset(datasetName, payloadItems);
+      setIngestSuccessMessage(`Successfully ingested & indexed ${res.total_imported} records into the database!`);
+    } catch (e: any) {
+      setErrorMessage(e.message || 'Ingest to database failed');
+    } finally {
+      setIsIngesting(false);
+    }
+  };
+
+  const handleTriggerRetrain = async () => {
+    setIsRunning(true);
+    setIngestSuccessMessage(null);
+    setErrorMessage(null);
+    try {
+      const res = await triggerModelRetrain();
+      if (res.status === 'SUCCESS') {
+        setIngestSuccessMessage(`Model Retrained! Accuracy: ${res.metrics.accuracy}% | F1-Score: ${res.metrics.f1_score}`);
+      } else {
+        setErrorMessage(res.message || 'Retraining failed');
+      }
+    } catch (e: any) {
+      setErrorMessage(e.message || 'Retraining failed');
+    } finally {
+      setIsRunning(false);
+    }
+  };
 
   const handleLoadPreset = (key: 'smishing_benchmark' | 'url_benchmark') => {
     const items = SAMPLE_DATASETS[key];
@@ -211,14 +259,41 @@ export const BatchEvaluator: React.FC = () => {
           </div>
         )}
 
-        <div className="flex items-center gap-3">
+        {ingestSuccessMessage && (
+          <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+            <span>{ingestSuccessMessage}</span>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={handleRunEvaluation}
             disabled={isRunning}
-            className="btn-primary"
+            className="btn-primary text-xs"
           >
             <Play className={`w-4 h-4 ${isRunning ? 'animate-spin' : ''}`} />
-            {isRunning ? 'Running Live Evaluation...' : 'Execute Batch Evaluation'}
+            {isRunning ? 'Evaluating Batch...' : 'Execute In-Memory Evaluation'}
+          </button>
+
+          <button
+            onClick={handleIngestToDatabase}
+            disabled={isIngesting || isRunning}
+            className="btn-secondary text-xs"
+            title="Saves and indexes all batch items directly into the permanent PhishGuard database"
+          >
+            <Database className={`w-4 h-4 text-cyan-400 ${isIngesting ? 'animate-spin' : ''}`} />
+            {isIngesting ? 'Persisting Records...' : 'Save & Ingest to Database'}
+          </button>
+
+          <button
+            onClick={handleTriggerRetrain}
+            disabled={isRunning}
+            className="btn-secondary text-xs"
+            title="Triggers ML Smishing classifier pipeline to retrain and hot-reload model weights"
+          >
+            <Cpu className="w-4 h-4 text-purple-400" />
+            Retrain Model
           </button>
         </div>
       </div>
