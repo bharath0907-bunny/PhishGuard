@@ -44,12 +44,32 @@ data class InterceptRecord(
     val created_at: String
 )
 
+data class UrlScanPayload(
+    val url: String,
+    val source: String = "ANDROID_APP_CLIPBOARD"
+)
+
+data class UrlScanMobileResponse(
+    val url: String,
+    val risk_score: Double,
+    val risk_level: String,
+    val prediction: String,
+    val reasons: List<String>,
+    val recommended_action: String
+)
+
 interface PhishGuardApiService {
     @POST("/api/v1/mobile/analyze-notification")
     suspend fun analyzeGoogleMessage(@Body payload: GoogleMessagePayload): Response<MobileAnalysisResponse>
 
     @GET("/api/v1/mobile/recent-intercepts")
     suspend fun getRecentIntercepts(@Query("limit") limit: Int = 20): Response<List<InterceptRecord>>
+
+    @GET("/health")
+    suspend fun checkHealth(): Response<Map<String, Any>>
+
+    @POST("/api/v1/analyze/url")
+    suspend fun scanUrl(@Body payload: UrlScanPayload): Response<UrlScanMobileResponse>
 }
 
 object RetrofitClient {
