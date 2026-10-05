@@ -157,6 +157,13 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Grant Google Messages Access", fontWeight = FontWeight.Bold, color = Color.White)
                     }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Opens phone's 'Notification access' page. Find 'PhishGuard' in the list, toggle ON, then press Back.",
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
                 }
             }
         }

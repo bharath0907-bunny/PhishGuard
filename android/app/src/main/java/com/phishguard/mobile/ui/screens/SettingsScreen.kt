@@ -145,45 +145,47 @@ fun SettingsScreen() {
                 // Quick Presets
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    OutlinedButton(
+                        onClick = {
+                            serverUrl = "http://192.168.1.16:8000"
+                            RetrofitClient.saveBaseUrl(context, serverUrl)
+                            Toast.makeText(context, "Set to Wi-Fi PC (192.168.1.16)", Toast.LENGTH_SHORT).show()
+                            testConnection()
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = CyberGreenLight)
+                    ) {
+                        Text("Wi-Fi PC", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+
                     OutlinedButton(
                         onClick = {
                             serverUrl = "http://10.0.2.2:8000"
                             RetrofitClient.saveBaseUrl(context, serverUrl)
+                            Toast.makeText(context, "Set to Emulator (10.0.2.2)", Toast.LENGTH_SHORT).show()
                             testConnection()
                         },
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentCyan)
                     ) {
-                        Text("Emulator", fontSize = 11.sp)
-                    }
-
-                    OutlinedButton(
-                        onClick = {
-                            serverUrl = "http://127.0.0.1:8000"
-                            RetrofitClient.saveBaseUrl(context, serverUrl)
-                            testConnection()
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentBlue)
-                    ) {
-                        Text("Localhost", fontSize = 11.sp)
+                        Text("Emulator", fontSize = 10.sp)
                     }
 
                     Button(
                         onClick = {
                             RetrofitClient.saveBaseUrl(context, serverUrl)
-                            Toast.makeText(context, "Saved!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Saved & Testing...", Toast.LENGTH_SHORT).show()
                             testConnection()
                         },
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1.1f),
                         colors = ButtonDefaults.buttonColors(containerColor = AccentCyan)
                     ) {
-                        Text("Save & Test", fontSize = 11.sp, color = CyberBackground, fontWeight = FontWeight.Bold)
+                        Text("Save & Test", fontSize = 10.sp, color = CyberBackground, fontWeight = FontWeight.Bold)
                     }
                 }
             }
