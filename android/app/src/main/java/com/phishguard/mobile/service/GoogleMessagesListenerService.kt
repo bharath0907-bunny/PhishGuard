@@ -91,6 +91,21 @@ class GoogleMessagesListenerService : NotificationListenerService() {
 
         // 1. Instant On-Device Local Heuristic Check (<5ms)
         val localAssessment = LocalHeuristicEngine.assessMessage(sender, rawBody)
+        val initialLevel = if (localAssessment.isCritical) "CRITICAL" else if (localAssessment.estimatedRiskScore >= 35.0) "SUSPICIOUS" else "SAFE"
+        val initialPrediction = if (localAssessment.isCritical) "SMISHING" else if (localAssessment.estimatedRiskScore >= 35.0) "SUSPICIOUS" else "SAFE"
+
+        // ALWAYS save on-device locally so any user who downloads the app has real-time logging
+        com.phishguard.mobile.storage.LocalThreatStorage.saveRecord(
+            context = applicationContext,
+            sender = sender,
+            text = rawBody,
+            riskScore = localAssessment.estimatedRiskScore,
+            riskLevel = initialLevel,
+            prediction = initialPrediction,
+            categories = if (localAssessment.isCritical) listOf("Smishing", "Urgent") else listOf("General SMS"),
+            reasons = localAssessment.reasons
+        )
+
         if (localAssessment.isCritical) {
             ThreatNotificationHelper.showThreatAlert(
                 context = applicationContext,
@@ -136,7 +151,7 @@ class GoogleMessagesListenerService : NotificationListenerService() {
                     Log.w(TAG, "API Response code: ${response.code()}")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to connect to PhishGuard backend (${RetrofitClient.baseUrl}): ${e.message}")
+                Log.e(TAG, "Backend unreachable (${RetrofitClient.baseUrl}): ${e.message} - Local On-Device assessment active.")
             }
         }
     }

@@ -309,6 +309,20 @@ fun HomeScreen(
                             "Urgent financial intimidation pattern"
                         )
                     )
+                    com.phishguard.mobile.storage.LocalThreatStorage.saveRecord(
+                        context = context,
+                        sender = "[CHASE-SECURITY]",
+                        text = "ALERT: Unauthorized transaction of $940.00. Verify immediately at http://chase-security-auth.xyz/verify",
+                        riskScore = 92.0,
+                        riskLevel = "CRITICAL",
+                        prediction = "SMISHING",
+                        categories = listOf("Financial Fraud", "Brand Impersonation"),
+                        reasons = listOf(
+                            "Brand spoofing detected for 'CHASE'",
+                            "High-abuse top level domain (.xyz)",
+                            "Urgent financial intimidation pattern"
+                        )
+                    )
                     Toast.makeText(context, "🚨 High-Priority Threat Notification Fired!", Toast.LENGTH_SHORT).show()
                 }
         ) {

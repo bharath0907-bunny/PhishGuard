@@ -346,6 +346,19 @@ fun SimulatorScreen() {
                         cloudResultReasons = localAssessment.reasons
                         Toast.makeText(context, "Running Offline: Evaluated via On-Device ML", Toast.LENGTH_SHORT).show()
                     } finally {
+                        val scoreToSave = cloudResultScore ?: localAssessment.estimatedRiskScore
+                        val levelToSave = if (scoreToSave >= 60.0) "CRITICAL" else if (scoreToSave >= 35.0) "SUSPICIOUS" else "SAFE"
+                        val predToSave = if (scoreToSave >= 60.0) "SMISHING" else if (scoreToSave >= 35.0) "SUSPICIOUS" else "SAFE"
+                        com.phishguard.mobile.storage.LocalThreatStorage.saveRecord(
+                            context = context,
+                            sender = sender,
+                            text = text,
+                            riskScore = scoreToSave,
+                            riskLevel = levelToSave,
+                            prediction = predToSave,
+                            categories = listOf("Attack Lab Test"),
+                            reasons = cloudResultReasons.ifEmpty { localAssessment.reasons }
+                        )
                         isSubmitting = false
                     }
                 }

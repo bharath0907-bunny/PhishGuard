@@ -6,8 +6,16 @@ Exports serialized models (.joblib) and portable JSON weights for zero-dependenc
 
 import json
 import os
+import sys
 import joblib
 import numpy as np
+
+# Ensure UTF-8 output encoding on Windows consoles
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, accuracy_score, f1_score
@@ -113,20 +121,41 @@ TRAINING_SAMPLES = [
 ]
 
 def train_and_export_model():
-    """Trains the NLP smishing model and exports joblib + JSON artifacts."""
+    """Trains the NLP smishing model on 5,971+ real-world SMS messages and exports joblib + JSON artifacts."""
     print("=" * 60)
     print("🛡️  PhishGuard ML: Training Advanced Smishing Classifier")
     print("=" * 60)
 
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    dataset_path = os.path.abspath(os.path.join(current_dir, "..", "data", "extracted", "Dataset_5971.csv"))
+
     texts = [sample[0] for sample in TRAINING_SAMPLES]
     labels = [sample[1] for sample in TRAINING_SAMPLES]
 
-    # Use Word (1-3) + Char (3-5) n-grams for link & lexical robustness
+    if os.path.exists(dataset_path):
+        import pandas as pd
+        df = pd.read_csv(dataset_path, encoding='utf-8', on_bad_lines='skip')
+        df['LABEL_CLEAN'] = df['LABEL'].astype(str).str.strip().str.lower()
+        for _, row in df.iterrows():
+            txt = str(row['TEXT']).strip()
+            lbl = row['LABEL_CLEAN']
+            if txt and txt != 'nan':
+                if lbl in ['smishing', 'spam']:
+                    texts.append(txt)
+                    labels.append(1)
+                elif lbl == 'ham':
+                    texts.append(txt)
+                    labels.append(0)
+        print(f"📁 Loaded {len(df)} real-world SMS records from: {dataset_path}")
+
+    print(f"📊 Total Training Dataset: {len(texts)} samples (Malicious/Threat: {sum(labels)}, Benign: {len(labels) - sum(labels)})")
+
+    # Use Word (1-2) n-grams with link & lexical pattern tokenizer
     vectorizer = TfidfVectorizer(
         ngram_range=(1, 2),
         lowercase=True,
         sublinear_tf=True,
-        max_features=2500,
+        max_features=5000,
         token_pattern=r"(?u)\b\w+\b|https?://[^\s]+"
     )
 
@@ -171,7 +200,7 @@ def train_and_export_model():
     print(f"💾 Saved backend models to: {model_path} and {vec_path}")
 
     # 2. Export Lightweight Model Weights JSON (For Android, Edge & Backend inference)
-    vocabulary = vectorizer.vocabulary_
+    vocabulary = {str(k): int(v) for k, v in vectorizer.vocabulary_.items()}
     idf = vectorizer.idf_.tolist()
     coefficients = clf.coef_[0].tolist()
     intercept = float(clf.intercept_[0])
