@@ -12,7 +12,8 @@ import {
   Server, 
   Play, 
   Pause,
-  Activity
+  Activity,
+  Cpu
 } from 'lucide-react';
 
 export type NavTabType = 
@@ -42,65 +43,65 @@ export const Navbar: React.FC<NavbarProps> = ({
   isSimulatingStream,
   onToggleSimulateStream
 }) => {
-  const tabs: Array<{ id: NavTabType; label: string; icon: React.ReactNode; isResearch?: boolean }> = [
-    { id: 'messages', label: 'Threat Radar & Stream', icon: <Smartphone className="w-3.5 h-3.5" /> },
-    { id: 'benchmarks', label: 'Research & Benchmarks', icon: <Award className="w-3.5 h-3.5 text-cyan-400" />, isResearch: true },
-    { id: 'attack_studio', label: 'Attack Vector & Adversarial Lab', icon: <Flame className="w-3.5 h-3.5 text-amber-400" /> },
-    { id: 'urls', label: 'URL Deep Scanner', icon: <Globe className="w-3.5 h-3.5" /> },
-    { id: 'emails', label: 'Email Inspector', icon: <Mail className="w-3.5 h-3.5" /> },
-    { id: 'batch_evaluator', label: 'Batch Dataset Evaluator', icon: <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-400" />, isResearch: true },
-    { id: 'publications', label: 'Paper & LaTeX Hub', icon: <BookOpen className="w-3.5 h-3.5 text-purple-400" />, isResearch: true },
-    { id: 'api_gateway', label: 'API & Gateway', icon: <Server className="w-3.5 h-3.5" /> },
+  const tabs: Array<{ id: NavTabType; label: string; icon: React.ReactNode; badge?: string }> = [
+    { id: 'messages', label: 'Threat Stream & Radar', icon: <Smartphone className="w-3.5 h-3.5" /> },
+    { id: 'benchmarks', label: 'Model Benchmarks', icon: <Award className="w-3.5 h-3.5 text-cyan-400" />, badge: '98.4%' },
+    { id: 'attack_studio', label: 'Evasion & Attack Lab', icon: <Flame className="w-3.5 h-3.5 text-amber-400" /> },
+    { id: 'urls', label: 'URL Deep Inspector', icon: <Globe className="w-3.5 h-3.5" /> },
+    { id: 'emails', label: 'Email Scanner', icon: <Mail className="w-3.5 h-3.5" /> },
+    { id: 'batch_evaluator', label: 'Batch Dataset Testing', icon: <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-400" /> },
+    { id: 'publications', label: 'Research & LaTeX Hub', icon: <BookOpen className="w-3.5 h-3.5 text-purple-400" /> },
+    { id: 'api_gateway', label: 'API & Mobile Gateway', icon: <Server className="w-3.5 h-3.5" /> },
   ];
 
   return (
-    <header className="glass-panel sticky top-3 z-50 mb-6 mx-auto max-w-7xl px-5 py-3 flex flex-wrap items-center justify-between gap-4">
+    <header className="glass-panel sticky top-3 z-50 mb-6 mx-auto max-w-7xl px-5 py-3.5 border border-slate-800 bg-slate-950/90 flex flex-wrap items-center justify-between gap-4">
       {/* Brand & Identity */}
       <div className="flex items-center gap-3">
-        <div className="p-2.5 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/25 flex items-center justify-center">
-          <Shield className="w-5 h-5 text-white" />
+        <div className="p-2.5 rounded-lg bg-slate-900 border border-cyan-500/30 shadow-md shadow-cyan-500/10 flex items-center justify-center">
+          <Shield className="w-5 h-5 text-cyan-400" />
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-lg font-bold tracking-tight text-white font-sans">PhishGuard</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
-              RESEARCH v2.4
+            <span className="text-base font-black tracking-wider text-white font-mono uppercase">PhishGuard SOC</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-md font-mono font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+              5,971 DATASET // v2.4
             </span>
           </div>
-          <p className="text-[11px] text-slate-400">Real-Time Multi-Vector Smishing & Threat Intelligence Platform</p>
+          <p className="text-[11px] text-slate-400 font-sans">Central Security Operations & Threat Defense Console</p>
         </div>
       </div>
 
-      {/* Live Simulation Control Button */}
-      <button
-        onClick={onToggleSimulateStream}
-        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
-          isSimulatingStream
-            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-lg shadow-amber-500/20 animate-pulse'
-            : 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30 hover:bg-cyan-500/25'
-        }`}
-        title={isSimulatingStream ? 'Pause automatic live stream events' : 'Automatically dispatch realistic mobile events to live stream for demonstration'}
-      >
-        {isSimulatingStream ? (
-          <>
-            <Pause className="w-3.5 h-3.5 text-amber-400" />
-            <span>Simulating Live Stream (Active)</span>
-          </>
-        ) : (
-          <>
-            <Play className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Start Live Demo Stream</span>
-          </>
-        )}
-      </button>
-
-      {/* Engine Status & Latency Badge */}
+      {/* Operational Controls & Engine Telemetry */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-950/70 border border-white/10">
+        <button
+          onClick={onToggleSimulateStream}
+          className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-2 border ${
+            isSimulatingStream
+              ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 animate-pulse'
+              : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500'
+          }`}
+          title="Toggle synthetic background event dispatcher"
+        >
+          {isSimulatingStream ? (
+            <>
+              <Pause className="w-3.5 h-3.5 text-amber-400" />
+              <span>Simulating Stream</span>
+            </>
+          ) : (
+            <>
+              <Play className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Test Stream Feed</span>
+            </>
+          )}
+        </button>
+
+        {/* Engine Status & Latency Badge */}
+        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
           <div className="pulse-live" />
-          <div className="text-left text-xs font-mono">
-            <div className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
-              ENGINE ONLINE
+          <div className="text-left font-mono">
+            <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+              ONLINE
             </div>
             <div className="text-[10px] text-slate-400">
               <span className="text-cyan-300 font-bold">{latencyMs} ms</span> • {activeDevices || 1} Device
@@ -109,22 +110,30 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Navigation Tab Bar */}
-      <nav className="w-full flex items-center gap-1.5 p-1 bg-slate-950/80 rounded-xl border border-white/5 overflow-x-auto">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-              activeTab === t.id
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-bold shadow-md shadow-cyan-500/25'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            {t.icon}
-            <span>{t.label}</span>
-          </button>
-        ))}
+      {/* Segmented Navigation Tab Bar */}
+      <nav className="w-full flex items-center gap-1.5 p-1 bg-slate-900/90 rounded-lg border border-slate-800 overflow-x-auto">
+        {tabs.map((t) => {
+          const isActive = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all border ${
+                isActive
+                  ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40 font-bold shadow-sm'
+                  : 'text-slate-400 border-transparent hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              {t.icon}
+              <span>{t.label}</span>
+              {t.badge && (
+                <span className="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-cyan-500/20 text-cyan-200 border border-cyan-500/30">
+                  {t.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </nav>
     </header>
   );

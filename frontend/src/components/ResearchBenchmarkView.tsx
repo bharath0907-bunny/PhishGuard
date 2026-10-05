@@ -16,7 +16,7 @@ import { ResearchBenchmarkResponse } from '../types';
 
 export const ResearchBenchmarkView: React.FC = () => {
   const [data, setData] = useState<ResearchBenchmarkResponse | null>(null);
-  const [selectedDataset, setSelectedDataset] = useState<string>('uci_sms_spam');
+  const [selectedDataset, setSelectedDataset] = useState<string>('dataset_5971');
   const [threshold, setThreshold] = useState<number>(45); // Decision threshold in %
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
